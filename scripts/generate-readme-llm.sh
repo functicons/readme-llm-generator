@@ -6,15 +6,52 @@ set -e
 IMAGE_NAME="readme-llm-generator"
 PROJECT_ROOT="$(dirname "$0")/.."
 
+INCLUDE_ARGS=""
+EXCLUDE_ARGS=""
+REPO_PATH_ARG=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --include)
+      if [[ -z "$2" || "$2" == --* ]]; then
+        echo "❌ Error: --include requires an argument." >&2
+        exit 1
+      fi
+      # These are glob patterns, passed to the Python script.
+      INCLUDE_ARGS="$INCLUDE_ARGS --include $2"
+      shift 2
+      ;;
+    --exclude)
+      if [[ -z "$2" || "$2" == --* ]]; then
+        echo "❌ Error: --exclude requires an argument." >&2
+        exit 1
+      fi
+      # These are glob patterns, passed to the Python script.
+      EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude $2"
+      shift 2
+      ;;
+    *)
+      # Assume it's the repository path
+      if [ -n "$REPO_PATH_ARG" ]; then
+        # If REPO_PATH_ARG is already set, then it's an unknown argument
+        echo "❌ Error: Unknown argument or multiple repository paths: $1" >&2
+        exit 1
+      fi
+      REPO_PATH_ARG="$1"
+      shift
+      ;;
+  esac
+done
+
 # --- Validation ---
 # Check if a repository path is provided as an argument.
-if [ -z "$1" ]; then
+if [ -z "$REPO_PATH_ARG" ]; then # Changed from $1 to $REPO_PATH_ARG
   echo "❌ Error: No repository path provided."
-  echo "Usage: ./scripts/create-readme-llm.sh /path/to/your/repo"
+  echo "Usage: ./scripts/create-readme-llm.sh /path/to/your/repo [--include PATTERN] [--exclude PATTERN]"
   exit 1
 fi
 
-REPO_PATH="$1"
+REPO_PATH="$REPO_PATH_ARG" # Changed from $1 to $REPO_PATH_ARG
 
 # Check if the .env file exists in the project root.
 if [ ! -f "$PROJECT_ROOT/.env" ]; then
@@ -40,6 +77,7 @@ docker run --rm \
   -e HOST_REPO_PATH="$REPO_PATH" \
   -e PYTHONUNBUFFERED=1 \
   -v "$REPO_PATH":/app/repo \
-  "$IMAGE_NAME"
+  "$IMAGE_NAME" \
+  /app/repo ${INCLUDE_ARGS} ${EXCLUDE_ARGS} # Pass repo_path and then include/exclude args
 
 echo "✨ Script finished."

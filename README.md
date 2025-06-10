@@ -128,6 +128,39 @@ Run the script, passing the path to the repository you want to analyze:
 
 The output file, `README.llm`, will appear in the root of your target project directory (`/path/to/your/repo`).
 
+The script also supports filtering files using **glob patterns** (similar to filename wildcard patterns used in the shell, not regular expressions):
+
+*   `--include <pattern>`:  Includes files/directories matching the pattern. You can use this option multiple times. If provided, only files matching at least one include pattern will be considered (after initial extension filtering).
+*   `--exclude <pattern>`: Excludes files/directories matching the pattern. You can use this option multiple times. Exclude patterns take precedence over include patterns.
+
+**Understanding Glob Patterns:**
+
+Glob patterns are a way to specify sets of filenames with wildcard characters. Common wildcards include:
+*   `*`: Matches any sequence of characters (except usually a path separator `/` unless it's the only character in a path segment, or used as `**`). For example, `*.txt` matches all files ending in `.txt`. `src/*` would match all files and directories directly under `src`.
+*   `?`: Matches any single character. For example, `file?.log` matches `file1.log` and `fileA.log` but not `file10.log`.
+*   `[]`: Matches any one of the characters enclosed in the brackets. For example, `[abc].txt` matches `a.txt`, `b.txt`, or `c.txt`. `[!abc].txt` matches any file that doesn't start with `a`, `b`, or `c`.
+*   `**`: (Often used for recursive matching) While `fnmatch` (the Python module used) doesn't have a special interpretation of `**` for recursion in the same way as some modern shells or `glob.glob(recursive=True)`, patterns like `mydir/**/*.py` are a common way to think about matching all Python files in `mydir` and its subdirectories. To achieve this with `fnmatch`, you might need patterns like `mydir/*.py`, `mydir/*/*.py`, etc., or simply use broader patterns like `mydir/**` if your `fnmatch` version/usage implies it or rely on `src/*` to match items within `src` and then let the script's walk behavior handle recursion. The key is that `*` itself can match directory names. For example, `src/*/utils.py` would match `src/app/utils.py` and `src/lib/utils.py`.
+
+These patterns are applied to the relative file paths within the repository.
+
+**Examples:**
+
+Only process files in the `src` directory:
+```bash
+./scripts/generate-readme-llm.sh /path/to/your/repo --include "src/*"
+```
+
+Process Python files in `src` but exclude any `test` subdirectories:
+```bash
+./scripts/generate-readme-llm.sh /path/to/your/repo --ext .py --include "src/*" --exclude "*/test/*"
+```
+
+Process all files except those in `node_modules` and `dist` folders:
+```bash
+./scripts/generate-readme-llm.sh /path/to/your/repo --exclude "node_modules/*" --exclude "dist/*"
+```
+Remember that these patterns are applied *after* the initial filtering by file extensions (controlled by the `--ext` argument in the Python script, which defaults to a common set of source code extensions if not specified via Docker command arguments).
+
 #### Option 2: Make command
 
 ```bash
@@ -149,3 +182,8 @@ Run:
 ```bash
 docker run --rm --env-file ./.env -v /path/to/your/repo:/app/repo readme-llm-generator
 ```
+To pass arguments like `--include`, `--exclude`, or `--ext` to the underlying Python script when using the direct `docker run` command, append them after the image name. The first argument must be the repository path inside the container (`/app/repo`):
+```bash
+docker run --rm --env-file ./.env -v /path/to/your/repo:/app/repo readme-llm-generator /app/repo --include "src/*" --exclude "*/tests/*" --ext .py .ts
+```
+This ensures the script inside the container receives the correct path and any additional flags.
