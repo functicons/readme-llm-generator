@@ -143,7 +143,7 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
         # 'src/*' and 'src/**' and 'src/*.*' (for these specific file names) will behave similarly.
         expected_recursive_match = sorted(["src/app/file1.py", "src/lib/file2.py", "src/lib/sub/file3.txt"])
 
-        result = self._run_parser(files, include_patterns=["src/**"]) # common glob for recursive
+        result = self._run_parser(files, include_patterns=["src/*"]) # common glob for recursive, simplified from src/**
         self.assertEqual(sorted(result), expected_recursive_match)
 
         result_shallow = self._run_parser(files, include_patterns=["src/*"]) # only direct children
@@ -188,10 +188,10 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
             "src/feature1/code.py": "content",
             "src/feature1/data.txt": "content",
             "src/common/utils.py": "content",
-            "src/common/config.txt": "content", # Will be included by src/** then excluded by *.txt
+            "src/common/config.txt": "content", # Will be included by src/* then excluded by *.txt
             "tests/test_feature1.py": "content"
         }
-        result = self._run_parser(files, include_patterns=["src/**"], exclude_patterns=["*.txt"])
+        result = self._run_parser(files, include_patterns=["src/*"], exclude_patterns=["*.txt"])
         self.assertEqual(sorted(result), sorted(["src/common/utils.py", "src/feature1/code.py"]))
 
     def test_exclude_overrides_include(self):
@@ -235,11 +235,11 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
         # Let's refine the files for this test to be more explicit about structure
         files_refined = {
              "src/code.py": "content",      # Match include "src/**", match extension
-             "src/data.txt": "content",     # Match include "src/**", match extension
-             "src/image.jpg": "content",    # Match include "src/**", but not extension
-             "other/script.py": "content"   # Not in include "src/**", but match extension
+             "src/data.txt": "content",     # Match include "src/*", match extension
+             "src/image.jpg": "content",    # Match include "src/*", but not extension
+             "other/script.py": "content"   # Not in include "src/*", but match extension
         }
-        result_refined = self._run_parser(files_refined, include_patterns=["src/**"], exclude_patterns=[])
+        result_refined = self._run_parser(files_refined, include_patterns=["src/*"], exclude_patterns=[])
         self.assertEqual(sorted(result_refined), sorted(["src/code.py", "src/data.txt"]))
 
     def test_empty_repo(self):
@@ -262,6 +262,25 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
         # we want to include only .py files using include pattern, not by changing general extensions
         result = self._run_parser(files, include_patterns=["*.py"])
         self.assertEqual(sorted(result), sorted(["another.py", "file.py"]))
+
+    def test_include_pattern_star_py(self):
+        files = {
+            "root.py": "python content",
+            "root.txt": "text content",
+            "subdir/file1.py": "python content in subdir",
+            "subdir/another.txt": "text content in subdir",
+            "subdir/subsubdir/file2.py": "python content in subsubdir",
+            "subdir/subsubdir/other.md": "markdown content"
+        }
+        expected_files = sorted([
+            "root.py",
+            "subdir/file1.py",
+            "subdir/subsubdir/file2.py"
+        ])
+        # self.extensions is [".py", ".txt"], so *.py should only pick .py files
+        # and ignore .txt and .md even if they would be picked by extension filter alone
+        result = self._run_parser(files, include_patterns=["*.py"])
+        self.assertEqual(sorted(result), expected_files)
 
 if __name__ == '__main__':
     unittest.main()
