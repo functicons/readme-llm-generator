@@ -59,6 +59,17 @@ The tool follows a simple workflow to analyze your code and generate README.llm:
 3.  **Gemini API Call**: This final prompt is sent to the Gemini API for analysis.
 4.  **Output Generation**: The tool receives the generated summary from the API and writes it to a new file named `README.llm`.
 
+## 🧪 Running Tests
+
+This project uses `pytest` for running tests. A convenience script and a Makefile target are provided to simplify the process.
+
+To run the tests, use the following Make command:
+
+```bash
+make test
+```
+This command will automatically install `pytest` if it's not already available in your environment and then execute the test suite.
+
 ## 📋 Requirements
 
 -   Docker
