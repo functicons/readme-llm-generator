@@ -1,0 +1,21 @@
+# .dockerignore
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+
+# Docker files
+Dockerfile
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Documentation
+README.md
