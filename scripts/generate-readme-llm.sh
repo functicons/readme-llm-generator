@@ -34,9 +34,11 @@ echo "🚀 Running the generator on repository: $REPO_PATH"
 
 # Run the Docker container, mounting the target repository into the container.
 # We now pass the REPO_PATH as an environment variable for better logging.
+# The PYTHONUNBUFFERED=1 variable ensures logs are streamed in real-time.
 docker run --rm \
   --env-file ./.env \
   -e HOST_REPO_PATH="$REPO_PATH" \
+  -e PYTHONUNBUFFERED=1 \
   -v "$REPO_PATH":/app/repo \
   "$IMAGE_NAME"
 
