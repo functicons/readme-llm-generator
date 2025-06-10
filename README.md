@@ -59,6 +59,17 @@ The tool follows a simple workflow to analyze your code and generate README.llm:
 3.  **Gemini API Call**: This final prompt is sent to the Gemini API for analysis.
 4.  **Output Generation**: The tool receives the generated summary from the API and writes it to a new file named `README.llm`.
 
+## 🧪 Running Tests
+
+This project uses `pytest` for running tests. A convenience script and a Makefile target are provided to simplify the process.
+
+To run the tests, use the following Make command:
+
+```bash
+make test
+```
+This command will automatically install `pytest` if it's not already available in your environment and then execute the test suite.
+
 ## 📋 Requirements
 
 -   Docker
@@ -128,6 +139,39 @@ Run the script, passing the path to the repository you want to analyze:
 
 The output file, `README.llm`, will appear in the root of your target project directory (`/path/to/your/repo`).
 
+The script also supports filtering files using **glob patterns** (similar to filename wildcard patterns used in the shell, not regular expressions):
+
+*   `--include <pattern>`:  Includes files/directories matching the pattern. You can use this option multiple times. If provided, only files matching at least one include pattern will be considered (after initial extension filtering).
+*   `--exclude <pattern>`: Excludes files/directories matching the pattern. You can use this option multiple times. Exclude patterns take precedence over include patterns.
+
+**Understanding Glob Patterns:**
+
+Glob patterns are a way to specify sets of filenames with wildcard characters. Common wildcards include:
+*   `*`: Matches any sequence of characters. Crucially, for the patterns used by this tool (leveraging Python's `fnmatch`), the `*` wildcard **can match path separators (`/`)**. This means it can match files across directory boundaries. For example, `*.py` would match `a.py`, `subdir/b.py`, and `another/sub/c.py`. Similarly, `src/*` would match all files and directories within `src` and all its subdirectories (e.g., `src/file.txt`, `src/subdir/another.py`).
+*   `?`: Matches any single character. For example, `file?.log` matches `file1.log` and `fileA.log` but not `file10.log`.
+*   `[]`: Matches any one of the characters enclosed in the brackets. For example, `[abc].txt` matches `a.txt`, `b.txt`, or `c.txt`. `[!abc].txt` matches any file that doesn't start with `a`, `b`, or `c`.
+*   `**`: While `**` is a common convention for recursive matching in many glob implementations (like modern bash with `globstar` or Python's `glob.glob(recursive=True)`), Python's `fnmatch` (used by this tool) does not give `**` any special recursive meaning beyond what `*` already provides. Because `*` itself can match path separators (as explained above), patterns like `src/*` will already match all files and directories within `src` and its subdirectories. Therefore, using `**` (e.g., `src/**`) is generally not necessary and can be replaced by `src/*` for clarity and simplicity.
+
+These patterns are applied to the relative file paths within the repository.
+
+**Examples:**
+
+Only process files in the `src` directory:
+```bash
+./scripts/generate-readme-llm.sh /path/to/your/repo --include "src/*"
+```
+
+Process Python files in `src` but exclude any `test` subdirectories:
+```bash
+./scripts/generate-readme-llm.sh /path/to/your/repo --ext .py --include "src/*" --exclude "*/test/*"
+```
+
+Process all files except those in `node_modules` and `dist` folders:
+```bash
+./scripts/generate-readme-llm.sh /path/to/your/repo --exclude "node_modules/*" --exclude "dist/*"
+```
+Remember that these patterns are applied *after* the initial filtering by file extensions (controlled by the `--ext` argument in the Python script, which defaults to a common set of source code extensions if not specified via Docker command arguments).
+
 #### Option 2: Make command
 
 ```bash
@@ -149,3 +193,8 @@ Run:
 ```bash
 docker run --rm --env-file ./.env -v /path/to/your/repo:/app/repo readme-llm-generator
 ```
+To pass arguments like `--include`, `--exclude`, or `--ext` to the underlying Python script when using the direct `docker run` command, append them after the image name. The first argument must be the repository path inside the container (`/app/repo`):
+```bash
+docker run --rm --env-file ./.env -v /path/to/your/repo:/app/repo readme-llm-generator /app/repo --include "src/*" --exclude "*/tests/*" --ext .py .ts
+```
+This ensures the script inside the container receives the correct path and any additional flags.

@@ -15,7 +15,7 @@ RUN_SCRIPT   := ./scripts/generate-readme-llm.sh
 
 # --- Commands ---
 # .PHONY declares targets that are not actual files.
-.PHONY: help setup build run clean
+.PHONY: help setup build run clean test
 
 # The default command executed when you just type 'make'.
 default: help
@@ -27,6 +27,7 @@ help:
 	@echo "  make setup    - 🚀 Create the .env file from the example to get started."
 	@echo "  make build    - 🛠️  Build the Docker image by calling the build script."
 	@echo "  make run      - ✨ Run the generator. Requires a path. Usage: make run REPO_PATH=/path/to/your/repo"
+	@echo "  make test     - 🧪 Run the test suite using pytest."
 	@echo "  make clean    - 🧹 Remove dangling Docker images to save space."
 	@echo "  make help     - ℹ️  Display this help message."
 	@echo ""
@@ -52,6 +53,10 @@ run:
 	fi
 	@echo "--- Calling run script for repository: $(REPO_PATH) ---"
 	@$(RUN_SCRIPT) "$(REPO_PATH)"
+
+test:
+	@echo "--- Running test suite ---"
+	@./scripts/run-tests.sh
 
 clean:
 	@echo "--- Removing dangling Docker images ---"

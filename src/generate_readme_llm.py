@@ -3,6 +3,7 @@
 import os
 import time
 import argparse
+import fnmatch
 import google.generativeai as genai
 from pathlib import Path
 import shutil
@@ -19,7 +20,7 @@ def load_configuration():
     return api_key, model_name, debug_mode, max_prompt_size
 
 # --- Component: Smart Parser & Chunker (GENERATOR) ---
-def parse_and_chunk_repository(repo_path, extensions, display_path, max_chunk_size):
+def parse_and_chunk_repository(repo_path, extensions, display_path, max_chunk_size, include_patterns, exclude_patterns):
     """
     Scans a repository and yields content chunks, creating them one by one.
     This function is a generator, making it memory-efficient.
@@ -42,6 +43,16 @@ def parse_and_chunk_repository(repo_path, extensions, display_path, max_chunk_si
 
     for file_path in all_files:
         relative_path = file_path.relative_to(repo_path)
+
+        # Apply include patterns
+        if include_patterns:
+            if not any(fnmatch.fnmatch(str(relative_path), pattern) for pattern in include_patterns):
+                continue  # Skip if not matching any include pattern
+
+        # Apply exclude patterns
+        if exclude_patterns:
+            if any(fnmatch.fnmatch(str(relative_path), pattern) for pattern in exclude_patterns):
+                continue  # Skip if matching any exclude pattern
         try:
             content = file_path.read_text(encoding='utf-8')
             total_files_processed += 1
@@ -221,6 +232,8 @@ def main():
     parser = argparse.ArgumentParser(description="Generate a README.llm file for a code repository.")
     parser.add_argument("repo_path", help="The path to the repository to analyze (e.g., /app/repo).")
     parser.add_argument("--ext", nargs="+", default=[".py", ".ts", ".js", ".java", ".hpp", ".h", ".go"], help="A list of file extensions to include in the analysis.")
+    parser.add_argument("--include", nargs="+", default=[], help="List of glob patterns (e.g., '*.py', 'src/**') to include files/paths. These are not regular expressions. Applied after extension filtering.")
+    parser.add_argument("--exclude", nargs="+", default=[], help="List of glob patterns (e.g., 'test_*', '**/temp/') to exclude files/paths. These are not regular expressions. Applied after include filtering and take precedence.")
     args = parser.parse_args()
 
     display_path = os.getenv("HOST_REPO_PATH", args.repo_path)
@@ -231,7 +244,7 @@ def main():
         base_prompt = construct_prompt("")
         max_code_size = max_prompt_size - len(base_prompt.encode('utf-8'))
         
-        chunk_generator = parse_and_chunk_repository(args.repo_path, args.ext, display_path, max_code_size)
+        chunk_generator = parse_and_chunk_repository(args.repo_path, args.ext, display_path, max_code_size, args.include, args.exclude)
         tmp_files = []
         
         for i, chunk in enumerate(chunk_generator):
