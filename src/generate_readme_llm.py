@@ -39,7 +39,8 @@ def parse_and_chunk_repository(
     display_path: str,
     max_chunk_size: int,
     include_patterns: list[str],
-    exclude_patterns: list[str]
+    exclude_patterns: list[str],
+    debug_mode: bool  # Added debug_mode parameter
 ) -> typing.Generator[str, None, None]:
     """
     Scans a repository, filters files by include/exclude patterns and extensions,
@@ -56,6 +57,9 @@ def parse_and_chunk_repository(
     Yields:
         str: A chunk of aggregated source code, prefixed with file headers.
     """
+    if debug_mode:
+        print(f"🐛 DEBUG: Include patterns: {include_patterns}")
+        print(f"🐛 DEBUG: Exclude patterns: {exclude_patterns}")
     print(f"🔎 Scanning repository at '{display_path}' for files with extensions: {extensions} ...")
     current_chunk: str = ""
     total_files_processed: int = 0
@@ -80,13 +84,25 @@ def parse_and_chunk_repository(
 
         # Apply include patterns: skip if not matching any include pattern
         if include_patterns:
+            if debug_mode:
+                print(f"🐛 DEBUG: Checking include patterns for file: {relative_path}")
             if not any(fnmatch.fnmatch(str(relative_path), pattern) for pattern in include_patterns):
+                if debug_mode:
+                    print(f"🐛 DEBUG: Skipping file (did not match include patterns): {relative_path}")
                 continue
+            elif debug_mode:
+                print(f"🐛 DEBUG: File included (matched include patterns): {relative_path}")
 
         # Apply exclude patterns: skip if matching any exclude pattern
         if exclude_patterns:
+            if debug_mode:
+                print(f"🐛 DEBUG: Checking exclude patterns for file: {relative_path}")
             if any(fnmatch.fnmatch(str(relative_path), pattern) for pattern in exclude_patterns):
+                if debug_mode:
+                    print(f"🐛 DEBUG: Skipping file (matched exclude pattern): {relative_path}")
                 continue
+            elif debug_mode:
+                print(f"🐛 DEBUG: File kept (did not match exclude patterns): {relative_path}")
         try:
             content: str = file_path.read_text(encoding='utf-8')
             total_files_processed += 1
@@ -416,7 +432,7 @@ def main() -> None:
         
         # --- File Parsing and Chunking ---
         chunk_generator: typing.Generator[str, None, None] = parse_and_chunk_repository(
-            args.repo_path, args.ext, display_path, max_code_size, args.include, args.exclude
+            args.repo_path, args.ext, display_path, max_code_size, args.include, args.exclude, debug_mode
         )
         tmp_files: list[Path] = [] # To store paths of temporary summary files
         
