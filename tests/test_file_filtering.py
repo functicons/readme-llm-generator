@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import os
 import typing # For type hints
+import io # For capturing stdout
 
 # Add src directory to Python path to import generate_readme_llm
 # This allows the test file to find the module being tested.
@@ -82,7 +83,8 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
                     files_structure: dict[str, str],
                     include_patterns: typing.Optional[list[str]] = None,
                     exclude_patterns: typing.Optional[list[str]] = None,
-                    extensions: typing.Optional[list[str]] = None
+                    extensions: typing.Optional[list[str]] = None,
+                    debug_mode: bool = False  # Added debug_mode parameter
                    ) -> list[str]:
         """
         Helper method to run the `parse_and_chunk_repository` generator with mocked
@@ -182,7 +184,8 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
                 self.display_path,
                 self.max_chunk_size,
                 include_patterns or [],
-                exclude_patterns or []
+                exclude_patterns or [],
+                debug_mode # Pass debug_mode
             ):
                 # Extract file paths from the generated chunk headers
                 for line in chunk.splitlines():
@@ -383,6 +386,94 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
         # Then, include_patterns=["*.py"] is applied.
         result: list[str] = self._run_parser(files, include_patterns=["*.py"])
         self.assertEqual(sorted(result), expected_files)
+
+    @patch('sys.stdout', new_callable=io.StringIO)
+    def test_debug_logs_include_exclude_patterns(self, mock_stdout: io.StringIO) -> None:
+        """ Test that include/exclude patterns are logged in debug mode. """
+        files: dict[str, str] = {"file1.py": "content"}
+        include_pats = ["*.py"]
+        exclude_pats = ["secrets/*"]
+        self._run_parser(files, include_patterns=include_pats, exclude_patterns=exclude_pats, debug_mode=True)
+
+        output: str = mock_stdout.getvalue()
+        self.assertIn(f"🐛 DEBUG: Include patterns: {include_pats}", output)
+        self.assertIn(f"🐛 DEBUG: Exclude patterns: {exclude_pats}", output)
+
+    @patch('sys.stdout', new_callable=io.StringIO)
+    def test_debug_logs_file_processing_with_include_patterns(self, mock_stdout: io.StringIO) -> None:
+        """ Test debug logs for file inclusion/skipping based on include patterns. """
+        files: dict[str, str] = {
+            "src/main.py": "content",      # Should be included
+            "tests/test.py": "content"     # Should be skipped
+        }
+        include_pats = ["src/*"]
+        self._run_parser(files, include_patterns=include_pats, exclude_patterns=[], debug_mode=True)
+
+        output: str = mock_stdout.getvalue()
+        # Check logs for main.py (included)
+        self.assertIn("🐛 DEBUG: Checking include patterns for file: src/main.py", output)
+        self.assertIn("🐛 DEBUG: File included (matched include patterns): src/main.py", output)
+        # Check logs for test.py (skipped)
+        self.assertIn("🐛 DEBUG: Checking include patterns for file: tests/test.py", output)
+        self.assertIn("🐛 DEBUG: Skipping file (did not match include patterns): tests/test.py", output)
+
+    @patch('sys.stdout', new_callable=io.StringIO)
+    def test_debug_logs_file_processing_with_exclude_patterns(self, mock_stdout: io.StringIO) -> None:
+        """ Test debug logs for file exclusion/keeping based on exclude patterns. """
+        files: dict[str, str] = {
+            "src/app.py": "content",          # Kept
+            "src/secrets.py": "content"       # Excluded
+        }
+        # No include patterns, so all .py files are initially considered
+        exclude_pats = ["*/secrets.py"]
+        self._run_parser(files, include_patterns=[], exclude_patterns=exclude_pats, debug_mode=True)
+
+        output: str = mock_stdout.getvalue()
+        # Check logs for app.py (kept)
+        self.assertIn("🐛 DEBUG: Checking exclude patterns for file: src/app.py", output)
+        self.assertIn("🐛 DEBUG: File kept (did not match exclude patterns): src/app.py", output)
+        # Check logs for secrets.py (excluded)
+        self.assertIn("🐛 DEBUG: Checking exclude patterns for file: src/secrets.py", output)
+        self.assertIn("🐛 DEBUG: Skipping file (matched exclude pattern): src/secrets.py", output)
+
+    @patch('sys.stdout', new_callable=io.StringIO)
+    def test_debug_logs_when_no_patterns_defined(self, mock_stdout: io.StringIO) -> None:
+        """Test that debug logs for patterns show empty lists when no patterns are defined."""
+        files: dict[str, str] = {"file1.py": "content"}
+        self._run_parser(files, include_patterns=[], exclude_patterns=[], debug_mode=True)
+        output: str = mock_stdout.getvalue()
+        self.assertIn("🐛 DEBUG: Include patterns: []", output)
+        self.assertIn("🐛 DEBUG: Exclude patterns: []", output)
+        # Also check that include/exclude checks are not happening if patterns are empty
+        self.assertNotIn("DEBUG: Checking include patterns for file:", output)
+        self.assertNotIn("DEBUG: Checking exclude patterns for file:", output)
+
+    @patch('sys.stdout', new_callable=io.StringIO)
+    def test_debug_logs_include_then_exclude(self, mock_stdout: io.StringIO) -> None:
+        """Test debug logs when a file matches include but is then excluded."""
+        files: dict[str, str] = {
+            "src/feature.py": "content",    # Included by src/*, then kept (not matching *.tmp)
+            "src/temp.tmp": "content"       # Included by src/*, then excluded by *.tmp (assuming .tmp is an allowed extension for this test)
+        }
+        include_pats = ["src/*"]
+        exclude_pats = ["*.tmp"]
+        # Add .tmp to extensions for this specific test
+        current_extensions = self.extensions + [".tmp"]
+        self._run_parser(files, include_patterns=include_pats, exclude_patterns=exclude_pats, extensions=current_extensions, debug_mode=True)
+
+        output: str = mock_stdout.getvalue()
+
+        # Check logs for feature.py
+        self.assertIn("🐛 DEBUG: Checking include patterns for file: src/feature.py", output)
+        self.assertIn("🐛 DEBUG: File included (matched include patterns): src/feature.py", output)
+        self.assertIn("🐛 DEBUG: Checking exclude patterns for file: src/feature.py", output)
+        self.assertIn("🐛 DEBUG: File kept (did not match exclude patterns): src/feature.py", output)
+
+        # Check logs for temp.tmp
+        self.assertIn("🐛 DEBUG: Checking include patterns for file: src/temp.tmp", output)
+        self.assertIn("🐛 DEBUG: File included (matched include patterns): src/temp.tmp", output)
+        self.assertIn("🐛 DEBUG: Checking exclude patterns for file: src/temp.tmp", output)
+        self.assertIn("🐛 DEBUG: Skipping file (matched exclude pattern): src/temp.tmp", output)
 
 
 if __name__ == '__main__':
