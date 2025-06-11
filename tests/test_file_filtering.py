@@ -9,7 +9,51 @@ import typing # For type hints
 # This allows the test file to find the module being tested.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from generate_readme_llm import parse_and_chunk_repository
+from generate_readme_llm import parse_and_chunk_repository, _clean_glob_patterns
+
+class TestCleanGlobPatterns(unittest.TestCase):
+    """
+    Test suite for the `_clean_glob_patterns` utility function.
+    """
+    def test_strip_single_quotes(self) -> None:
+        self.assertEqual(_clean_glob_patterns(["'pattern1'", "'p2/*'"]), ["pattern1", "p2/*"])
+
+    def test_strip_double_quotes(self) -> None:
+        self.assertEqual(_clean_glob_patterns(['"pattern1"', '"p2/*"']), ["pattern1", "p2/*"])
+
+    def test_no_quotes(self) -> None:
+        self.assertEqual(_clean_glob_patterns(["pattern1", "p2/*"]), ["pattern1", "p2/*"])
+
+    def test_mixed_quotes_and_no_quotes(self) -> None:
+        self.assertEqual(_clean_glob_patterns(["'p1'", '"p2"', "p3"]), ["p1", "p2", "p3"])
+
+    def test_mismatched_quotes(self) -> None:
+        # Mismatched quotes should not be stripped
+        self.assertEqual(_clean_glob_patterns(["'pattern1\"", "\"p2'"]), ["'pattern1\"", "\"p2'"])
+
+    def test_empty_list(self) -> None:
+        self.assertEqual(_clean_glob_patterns([]), [])
+
+    def test_empty_strings_and_quotes_only(self) -> None:
+        # '' -> '' (empty string from single quotes)
+        # "" -> "" (empty string from double quotes)
+        # "'" -> "'" (single quote char, no change)
+        # '"' -> '"' (double quote char, no change)
+        self.assertEqual(_clean_glob_patterns(["''", '""', "'", '"', "notempty"]), ["", "", "'", '"', "notempty"])
+
+    def test_patterns_with_internal_quotes(self) -> None:
+        # Quotes are only stripped if they are at the very beginning AND end.
+        self.assertEqual(_clean_glob_patterns(["'pat\"ern1'", "\"pat'ern2\""]), ["pat\"ern1", "pat'ern2"])
+
+    def test_single_quote_inside_double_quotes(self) -> None:
+        self.assertEqual(_clean_glob_patterns(["\"'\""]), ["'"])
+
+    def test_double_quote_inside_single_quotes(self) -> None:
+        self.assertEqual(_clean_glob_patterns(["'\"'"]), ["\""])
+
+    def test_incomplete_quoting(self) -> None:
+        self.assertEqual(_clean_glob_patterns(["'pat", "pat'", "\"pat", "pat\""]), ["'pat", "pat'", "\"pat", "pat\""])
+
 
 class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
     """

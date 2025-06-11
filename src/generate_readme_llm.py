@@ -233,6 +233,29 @@ def write_output_file(repo_path: str, content: str, display_path: str) -> None:
         print(f"❌ Failed to write output file: {e}")
         raise
 
+# --- Helper: Glob Pattern Cleaner ---
+def _clean_glob_patterns(patterns: list[str]) -> list[str]:
+    """
+    Cleans a list of glob patterns by removing surrounding single or double quotes.
+
+    Args:
+        patterns: A list of pattern strings.
+
+    Returns:
+        A new list with cleaned patterns.
+    """
+    if not patterns:
+        return []
+    cleaned_patterns = []
+    for pattern in patterns:
+        if len(pattern) >= 2 and pattern.startswith("'") and pattern.endswith("'"):
+            cleaned_patterns.append(pattern[1:-1])
+        elif len(pattern) >= 2 and pattern.startswith('"') and pattern.endswith('"'):
+            cleaned_patterns.append(pattern[1:-1])
+        else:
+            cleaned_patterns.append(pattern)
+    return cleaned_patterns
+
 # --- Helper: Code Fence Stripper ---
 def strip_markdown_code_block(text: str) -> str:
     """
@@ -374,6 +397,10 @@ def main() -> None:
     parser.add_argument("--exclude", nargs="+", default=[],
                         help="List of glob patterns (e.g., 'test_*', '**/temp/') to exclude files/paths. Applied after include filtering and take precedence.")
     args: argparse.Namespace = parser.parse_args()
+
+    # Clean up glob patterns using the utility function
+    args.include = _clean_glob_patterns(args.include)
+    args.exclude = _clean_glob_patterns(args.exclude)
 
     # Determine the display path for logs (can be different from actual repo_path in containers)
     display_path: str = os.getenv("HOST_REPO_PATH", args.repo_path)
