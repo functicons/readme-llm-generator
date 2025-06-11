@@ -16,7 +16,7 @@ if [ -n "$1" ]; then
     REPO_PATH_ARG="$1"
     echo "Debug (wrapper): REPO_PATH_ARG set to $REPO_PATH_ARG from \$1"
     shift # Remove repo path, remaining $@ are include/exclude options
-    PASSTHROUGH_ARGS="$@" # Store the remaining arguments
+    PASSTHROUGH_ARGS=("$@") # Store the remaining arguments
 else
     echo "❌ Error (wrapper): REPO_PATH argument is not set."
     echo "Usage: ./scripts/generate-readme-llm.sh /absolute/path/to/your/repo [--include PATTERN] [--exclude PATTERN]"
@@ -53,6 +53,6 @@ docker run \
     -e IMAGE_NAME="${EFFECTIVE_IMAGE_NAME}" \
     -e PYTHONUNBUFFERED=1 \
     "${EFFECTIVE_IMAGE_NAME}" \
-    python /app/src/generate_readme_llm.py /app/repo ${PASSTHROUGH_ARGS}
+    python /app/src/generate_readme_llm.py /app/repo "${PASSTHROUGH_ARGS[@]}"
 
 echo "--- Wrapper script: README generator process finished ---"
