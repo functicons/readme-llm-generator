@@ -340,5 +340,6 @@ class TestParseAndChunkRepositoryFiltering(unittest.TestCase):
         result: list[str] = self._run_parser(files, include_patterns=["*.py"])
         self.assertEqual(sorted(result), expected_files)
 
+
 if __name__ == '__main__':
     unittest.main()
