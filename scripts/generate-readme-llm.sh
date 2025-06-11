@@ -30,22 +30,26 @@ if [[ "$REPO_PATH_ARG" != /* ]]; then
   exit 1
 fi
 
-# Check for .env file in the current directory (optional warning).
-if [ ! -f "$(pwd)/.env" ]; then
-    echo "⚠️ Warning (wrapper): .env file not found in current directory ($(pwd)). The script inside Docker might not have access to GOOGLE_API_KEY."
+PROJECT_ROOT_ENV_FILE="$(dirname "$0")/../.env"
+
+# Check for .env file in the project root. This file is critical.
+if [ ! -f "$PROJECT_ROOT_ENV_FILE" ]; then
+    echo "❌ Error: .env file not found in project root ($PROJECT_ROOT_ENV_FILE)." >&2
+    echo "This file is required for critical configurations like GOOGLE_API_KEY." >&2
+    echo "Please create it by copying .env.example and filling in your details." >&2
+    exit 1
 fi
 
 echo "--- Wrapper script: Launching README generation in Docker image: ${EFFECTIVE_IMAGE_NAME} ---"
 
 # Execute the internal script INSIDE the Docker container.
-# Note: IS_IN_DOCKER=true is set here for the internal script's environment,
-# even though this wrapper doesn't check it. This maintains compatibility
-# if the internal script *were* to check it, but it's not strictly necessary
-# for the new internal script which is dedicated to running in Docker.
+# Script exits above if .env file is not found, so we can assume it exists here.
+ENV_FILE_PARAM="--env-file $PROJECT_ROOT_ENV_FILE"
+
 docker run \
     --rm \
     -v "$REPO_PATH_ARG:/app/repo" \
-    -v "$(pwd)/.env:/app/.env" \
+    $ENV_FILE_PARAM \
     -e IMAGE_NAME="${EFFECTIVE_IMAGE_NAME}" \
     -e PYTHONUNBUFFERED=1 \
     "${EFFECTIVE_IMAGE_NAME}" \

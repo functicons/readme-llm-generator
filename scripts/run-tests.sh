@@ -18,9 +18,17 @@ if [ "$IS_IN_DOCKER" == "true" ]; then
 else
     # --- Not running inside Docker, re-execute in Docker ---
     echo "--- Not inside Docker, re-launching in Docker image: ${EFFECTIVE_IMAGE_NAME} ---"
+    PROJECT_ROOT_ENV_FILE="$(dirname "$0")/../.env"
+    ENV_FILE_PARAM=""
+    if [ -f "$PROJECT_ROOT_ENV_FILE" ]; then
+        ENV_FILE_PARAM="--env-file $PROJECT_ROOT_ENV_FILE"
+        echo "--- Loading .env file from project root ($PROJECT_ROOT_ENV_FILE) for test execution ---"
+    fi
+
     docker run \
         --rm \
         -v "$(pwd):/app/repo" \
+        $ENV_FILE_PARAM \
         -e IS_IN_DOCKER=true \
         -e IMAGE_NAME="${EFFECTIVE_IMAGE_NAME}" \
         "${EFFECTIVE_IMAGE_NAME}" \
