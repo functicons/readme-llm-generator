@@ -28,6 +28,7 @@ help:
 	@echo "  make build    - 🛠️  Build the Docker image by calling the build script."
 	@echo "  make run      - ✨ Run the generator. Requires a path. Usage: make run REPO_PATH=/path/to/your/repo"
 	@echo "  make test     - 🧪 Run the test suite using pytest."
+	@echo "  make check    - ✅ Run checks (e.g., type checking, linting)."
 	@echo "  make clean    - 🧹 Remove dangling Docker images to save space."
 	@echo "  make help     - ℹ️  Display this help message."
 	@echo ""
@@ -57,6 +58,10 @@ run:
 test:
 	@echo "--- Running test suite ---"
 	@./scripts/run-tests.sh
+
+check:
+	@echo "Running checks..."
+	@scripts/check.sh
 
 clean:
 	@echo "--- Removing dangling Docker images ---"
