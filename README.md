@@ -6,7 +6,7 @@ The tool is packaged as a Docker image for portability and ease of use.
 
 ## ✨ Features
 
--   Analyzes source code repositories to create a high-level summary.
+-   Analyzes large source code repositories beyond the context window limit.
 -   Leverages the Gemini API and its large context window for code analysis.
 -   Configurable to scan for specific file types (e.g., `.py`, `.ts`, `.java`).
 -   Generates language-specific output formats (e.g., Python `.pyi`, TypeScript `.d.ts`, Java `interface`).
