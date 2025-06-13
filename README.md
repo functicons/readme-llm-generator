@@ -1,12 +1,12 @@
 # README.llm Generator 🤖
 
-This tool generates a `README.llm` file for a given source code repository. The generated file provides a machine-readable API spec of the codebase, which can be used to give Large Language Models (LLMs) better context, improving the quality of their generated code.
+This tool generates a `README.llm` file for a given codebase. The generated file provides a machine-readable API spec of the codebase, which can be used to give Large Language Models (LLMs) better context, improving the quality of their generated code.
 
 The tool is packaged as a Docker image for portability and ease of use.
 
 ## ✨ Features
 
--   Analyzes large source code repositories beyond the context window limit.
+-   Analyzes large codebase beyond the context window limit.
 -   Leverages the Gemini API and its large context window for code analysis.
 -   Configurable file filters.
 -   Generates language-specific output formats (e.g., Python `.pyi`, TypeScript `.d.ts`, Java `interface`).
